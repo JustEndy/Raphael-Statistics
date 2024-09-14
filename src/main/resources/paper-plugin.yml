@@ -1,0 +1,6 @@
+name: Raphael_Statistics
+version: '0.1'
+main: org.raphaelstats.raphaelStatistics.Raphael_Statistics
+api-version: '1.21'
+authors: [ JustEndy ]
+description: A Plugin that syncs with a discord bot and displays individual/server stats on it!
