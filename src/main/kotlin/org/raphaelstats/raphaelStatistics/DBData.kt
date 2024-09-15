@@ -1,10 +1,9 @@
 package org.raphaelstats.raphaelStatistics
 
-//import kotlinx.datetime.DateTimeUnit
-//import kotlinx.datetime.LocalDateTime
-//import java.time.format.DateTimeFormatter
-//
-//class DBData(Time: LocalDateTime.Companion, Data: String) {
-//    var Time = DateTimeFormatter.ofPattern("0001-01-01 00:00:00");
-//    var Data = "";
-//}
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.serialization.Serializable
+import java.time.format.DateTimeFormatter
+
+@Serializable
+class DBData(var Type: Int,var Data: String)
