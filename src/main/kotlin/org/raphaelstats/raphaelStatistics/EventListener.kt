@@ -1,92 +1,120 @@
 package org.raphaelstats.raphaelStatistics
 
+import io.github.jan.supabase.gotrue.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.runBlocking
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Bukkit.getLogger
 import org.bukkit.entity.EntityType
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDeathEvent
-import org.bukkit.event.entity.PlayerDeathEvent
-import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.*
+import io.papermc.paper.event.player.AsyncChatEvent
+import org.bukkit.entity.Entity
+import org.bukkit.event.EventPriority
 import org.raphaelstats.raphaelStatistics.Raphael_Statistics.Companion.supabase
-
+import java.text.SimpleDateFormat
+import java.util.*
 
 public class EventListener() : Listener {
 
-    @EventHandler
-    fun onPlayerDeath(event: PlayerDeathEvent?) {
-        if (event == null) return;
-
-        var currentTime = java.util.Calendar.getInstance().time
-        var deathMsg = PlainTextComponentSerializer.plainText().serialize(event.deathMessage()!!)
-        var UUID: String = event.entity.uniqueId.toString()
-        var name = event.entity.name
-        var deathType = event.damageSource.damageType.key
-        var killedBy = event.damageSource.causingEntity?.name
-        var enemyType: Int = getEnemyType(event)
-        var weapon = event.damageSource.directEntity?.name
-
-        var Data = "$UUID;$enemyType;$deathType;$killedBy;$weapon;";
-
-        getLogger().info("\n\tPlayerDeathTime: $currentTime\n\tFullMessage: $deathMsg\n\tKilled: $UUID ($name)\n\tType: $deathType\n\tKilledBy: $killedBy")
-
-        CreateRow(0, Data)
-    }
-
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     fun OnEntityDeath(event: EntityDeathEvent?) {
         if (event == null) return;
 
-        var currentTime = java.util.Calendar.getInstance().time
+        var currentTime = SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Calendar.getInstance().time)
         var UUID: String = event.entity.uniqueId.toString()
         var name = event.entity.name
+        var entityType = getEntityType(event.entity)
         var deathType = event.damageSource.damageType.key
-        var killedBy = event.damageSource.causingEntity?.name
-        var enemyType: Int = getEnemyType(event)
+        var killedBy = event.damageSource.causingEntity
+        var enemyType: Int = getEntityType(event.damageSource.causingEntity)
         var weapon = event.damageSource.directEntity?.name
 
-        var Data = "$UUID;$enemyType;$deathType;$killedBy;$weapon;";
+        var identifier = if(entityType == 1) UUID else name
+        var enemyIdentifier = if(enemyType == 1) killedBy?.uniqueId else killedBy?.name
 
-        getLogger().info("\n\tEntityDeathTime: $currentTime\n\tKilled: $UUID ($name)\n\tType: $deathType\n\tKilledBy: $killedBy")
+        var Data = "$entityType;$identifier;$enemyType;$enemyIdentifier;$deathType;$weapon";
 
-        CreateRow(1, Data)
+        getLogger().info("\n\tEntityDeathTime: $currentTime\n\tKilled: $identifier\n\tType: $deathType\n\tKilledBy: $enemyIdentifier")
+
+        CreateRow(currentTime, 0, Data)
     }
 
-    @EventHandler
-    fun OnPlayerConnection(event: PlayerJoinEvent?) {
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun OnPlayerJoin(event: PlayerJoinEvent?) {
         if (event == null) return;
 
+        var currentTime = SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Calendar.getInstance().time)
         var UUID: String = event.player.uniqueId.toString()
         var name = event.player.name
-        var currentTime = java.util.Calendar.getInstance().time
         var Data = "$UUID";
 
         getLogger().info("\n\tJoinTime: $currentTime\n\tName: $UUID ($name)")
 
-        CreateRow(2, Data)
+        CreateRow(currentTime,1, Data)
     }
 
-    private fun getEnemyType(event: EntityDeathEvent?): Int {
-        if (event != null) {
-            if (event.damageSource.causingEntity == null) {
-                return 3
-            } else if (event.damageSource.causingEntity?.type == EntityType.PLAYER) {
-                return 1
-            } else {
-                return 2
-            }
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun OnPlayerQuit(event: PlayerQuitEvent?) {
+        if (event == null) return;
+
+        var currentTime = SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Calendar.getInstance().time)
+        var UUID: String = event.player.uniqueId.toString()
+        var name = event.player.name
+        var Data = "$UUID";
+
+        getLogger().info("\n\tDisconnectTime: $currentTime\n\tName: $UUID ($name)")
+
+        CreateRow(currentTime,2, Data)
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun OnPlayerAchievement(event: PlayerAdvancementDoneEvent?) {
+        if (event == null) return;
+        if (event.advancement.key.key.contains("recipes")) return;
+
+        var currentTime = SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Calendar.getInstance().time)
+        var UUID: String = event.player.uniqueId.toString()
+        var name = event.player.name
+        var achievement = event.advancement.key.key
+        var Data = "$UUID;$achievement";
+
+        getLogger().info("\n\tAchievementTime: $currentTime\n\tName: $UUID ($name)\n\tAchievement: $achievement")
+
+        CreateRow(currentTime,3, Data)
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun OnPlayerComment(event: AsyncChatEvent?) {
+        if (event == null) return;
+
+        var currentTime = SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(Calendar.getInstance().time)
+        var UUID: String = event.player.uniqueId.toString()
+        var name = event.player.name
+        var Data = "$UUID";
+
+        getLogger().info("\n\tCommentTime: $currentTime\n\tName: $UUID ($name)")
+
+        CreateRow(currentTime, 4, Data)
+    }
+
+    private fun getEntityType(entity: Entity?): Int {
+        if (entity == null) {
+            return 3
+        } else if (entity.type == EntityType.PLAYER) {
+            return 1
+        } else {
+            return 2
         }
         return 0
     }
 
-    private fun CreateRow(Type: Int, Data: String) = runBlocking {
-        val dataRow = DBData(Type, Data)
-//        launch { // launch a new coroutine and continue
-//            delay(1000L) // non-blocking delay for 1 second (default time unit is ms)
-//            println("World!") // print after delay
-//        }
-        supabase.from("DataFetch").insert(dataRow)
+    private fun CreateRow(Time: String, Type: Int, Data: String) = runBlocking {
+        var user = supabase.auth.currentUserOrNull();
+        if (user != null) {
+            val dataRow = DBData(user.id, Type, Time, Data)
+            supabase.from("DataFetch").insert(dataRow)
+        }
     }
 }
